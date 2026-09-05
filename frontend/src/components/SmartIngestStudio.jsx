@@ -9,6 +9,7 @@ import {
   ArrowRight, 
   Plus, 
   X, 
+  Loader2,
   Radio
 } from 'lucide-react';
 import { prescanFiles, getFullApiUrl } from '../api/client';
