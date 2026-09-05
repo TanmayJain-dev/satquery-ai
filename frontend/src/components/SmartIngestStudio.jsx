@@ -9,10 +9,9 @@ import {
   ArrowRight, 
   Plus, 
   X, 
-  Loader2, 
   Radio
 } from 'lucide-react';
-import { prescanFiles } from '../api/client';
+import { prescanFiles, getFullApiUrl } from '../api/client';
 
 export default function SmartIngestStudio({ onAnalyze, isLoading }) {
   const [files, setFiles] = useState([]);
@@ -102,7 +101,7 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
 
       const fetchedFiles = await Promise.all(
         fileNames.map(async (name) => {
-          const res = await fetch(`/samples/${name}`);
+          const res = await fetch(getFullApiUrl(`/samples/${name}`));
           const blob = await res.blob();
           return new File([blob], name, { type: 'image/png' });
         })

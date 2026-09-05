@@ -14,6 +14,7 @@ import {
   Check, 
   Compass
 } from 'lucide-react';
+import { getFullApiUrl } from '../api/client';
 
 export default function ResultInspector({ result }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'bands' | 'physics' | 'raw'
@@ -52,7 +53,7 @@ export default function ResultInspector({ result }) {
   };
 
   const handleOpenInNewTab = () => {
-    const targetUrl = report_url || `/api/report/${session_id}`;
+    const targetUrl = getFullApiUrl(report_url || `/api/report/${session_id}`);
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 

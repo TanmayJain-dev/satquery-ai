@@ -3,7 +3,18 @@
  * API communication layer for SatQuery AI.
  */
 
-const API_BASE = '/api';
+export const API_BASE_HOST = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+export const API_BASE = `${API_BASE_HOST}/api`;
+
+/**
+ * Resolves relative sample or report paths into full backend URLs
+ */
+export function getFullApiUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_HOST}${cleanPath}`;
+}
 
 export async function fetchHealth() {
   const res = await fetch(`${API_BASE}/health`);
