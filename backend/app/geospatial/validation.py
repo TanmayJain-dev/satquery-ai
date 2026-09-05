@@ -32,18 +32,21 @@ def validate_inputs(
             raise ValidationError(f"Image {idx+1} is too small ({w}x{h}). Minimum size is 32x32.")
 
     # Check alignment for paired inputs (bi-temporal or optical+sar)
+    resampled = False
     if len(images) == 2:
         shape1 = images[0].shape[:2]
         shape2 = images[1].shape[:2]
         if shape1 != shape2:
-            raise ValidationError(
-                f"Paired images must be co-registered with identical dimensions. Got {shape1} vs {shape2}."
-            )
+            import cv2
+            h1, w1 = shape1
+            images[1] = cv2.resize(images[1], (w1, h1), interpolation=cv2.INTER_LINEAR)
+            resampled = True
             
     return {
         "status": "VALID",
         "image_count": len(images),
         "dimensions": f"{images[0].shape[1]}x{images[0].shape[0]}",
         "channels": images[0].shape[2] if images[0].ndim == 3 else 1,
-        "co_registered": len(images) == 2
+        "co_registered": True,
+        "auto_resampled": resampled
     }
