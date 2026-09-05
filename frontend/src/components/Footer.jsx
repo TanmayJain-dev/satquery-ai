@@ -11,7 +11,7 @@ export default function Footer() {
         <span>SIH 2026 Problem Statement SIH26167 (ISRO)</span>
       </div>
       <div className="flex items-center gap-2 text-zinc-400">
-        <span>© 2026 <strong className="text-zinc-200 font-semibold">Tanmay Jain</strong>. All rights reserved.</span>
+        <span>© 2026 SatQuery AI. All rights reserved.</span>
       </div>
     </footer>
   );

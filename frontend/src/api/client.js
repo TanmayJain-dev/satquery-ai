@@ -45,3 +45,20 @@ export async function analyzeCustomQuery(query, files) {
   }
   return res.json();
 }
+
+export async function prescanFiles(files) {
+  const formData = new FormData();
+  for (const f of files) {
+    formData.append('files', f);
+  }
+
+  const res = await fetch(`${API_BASE}/prescan`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Prescan failed' }));
+    throw new Error(err.detail || 'Prescan failed');
+  }
+  return res.json();
+}

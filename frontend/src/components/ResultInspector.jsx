@@ -1,10 +1,10 @@
 import React from 'react';
-import { ShieldCheck, FileDown, BarChart3, Info } from 'lucide-react';
+import { ShieldCheck, FileDown, BarChart3, Info, AlertTriangle, Radio } from 'lucide-react';
 
 export default function ResultInspector({ result }) {
   if (!result) return null;
 
-  const { answer, confidence, results, report_id, report_html, session_id } = result;
+  const { answer, confidence, results, report_id, report_html, session_id, modalities, guidance_notes } = result;
 
   const handleDownloadReport = () => {
     const blob = new Blob([report_html], { type: 'text/html' });
@@ -16,8 +16,33 @@ export default function ResultInspector({ result }) {
     URL.revokeObjectURL(url);
   };
 
+  // Check detected sensor family
+  const primaryModality = modalities?.[0] || results?.modality_info;
+  const isRadar = primaryModality?.is_radar || results?.measured_metrics?.is_radar;
+
   return (
     <div className="rounded-xl border border-zinc-800 bg-[#0c0c0e] p-4 flex flex-col gap-4">
+      {/* Sensor Modality Tag */}
+      {primaryModality && (
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800">
+          <div className="flex items-center gap-2">
+            <Radio className="h-4 w-4 text-sky-400" />
+            <span className="text-xs font-semibold text-zinc-200">
+              Sensor Diagnosis: {primaryModality.sensor_family || (isRadar ? 'Sentinel-1 SAR Radar' : 'Sentinel-2 MSI Optical')}
+            </span>
+          </div>
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
+              isRadar
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+            }`}
+          >
+            {isRadar ? 'SAR Backscatter' : 'Optical MSI'}
+          </span>
+        </div>
+      )}
+
       {/* Answer Block */}
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -31,6 +56,26 @@ export default function ResultInspector({ result }) {
           {answer}
         </div>
       </div>
+
+      {/* Guidance Notes & Missing Modality Recommendations */}
+      {((guidance_notes && guidance_notes.length > 0) || results?.guidance) && (
+        <div className="p-3 rounded-lg bg-amber-950/20 border border-amber-500/30 text-xs space-y-1.5">
+          <div className="font-semibold text-amber-300 flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+            <span>Intelligent Sensor Guidance & Recommendation</span>
+          </div>
+          {results?.guidance?.missing_modality_alert && (
+            <p className="text-zinc-300 text-[11px] leading-relaxed">
+              {results.guidance.missing_modality_alert}
+            </p>
+          )}
+          {guidance_notes && guidance_notes.map((note, idx) => (
+            <p key={idx} className="text-zinc-300 text-[11px] leading-relaxed">
+              {note}
+            </p>
+          ))}
+        </div>
+      )}
 
       {/* Confidence & Verification Gauge */}
       <div className="grid grid-cols-2 gap-3">
@@ -59,12 +104,12 @@ export default function ResultInspector({ result }) {
         </div>
       </div>
 
-      {/* Spectral or Measurement Breakdown if available */}
+      {/* Spectral or Radar Measurement Breakdown if available */}
       {results?.spectral_distribution && (
         <div>
           <div className="text-[11px] font-semibold text-zinc-400 mb-2 flex items-center gap-1">
             <BarChart3 className="h-3.5 w-3.5 text-purple-400" />
-            Spectral Land-Cover Distribution
+            {isRadar ? 'Radar Backscatter Physical Distribution' : 'Spectral Land-Cover Distribution'}
           </div>
           <div className="space-y-1.5">
             {Object.entries(results.spectral_distribution).map(([cls, pct]) => (
@@ -75,7 +120,13 @@ export default function ResultInspector({ result }) {
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                   <div
-                    className="h-full bg-sky-400 rounded-full transition-all duration-300"
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      cls.includes('Water') || cls.includes('River')
+                        ? 'bg-cyan-400'
+                        : cls.includes('Built-up') || cls.includes('Structural')
+                        ? 'bg-amber-400'
+                        : 'bg-emerald-400'
+                    }`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>

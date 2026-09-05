@@ -3,6 +3,8 @@ router.py
 ---------
 Agentic Router: Central orchestrator connecting input validation,
 query classification, tool execution, and evidence compilation.
+Equipped with automated sensor modality detection (SAR vs Optical)
+and intelligent cross-modal guidance.
 """
 
 import uuid
@@ -12,6 +14,7 @@ import numpy as np
 from .classifier import classify_query
 from .trace import AgentTrace
 from ..geospatial.validation import validate_inputs
+from ..geospatial.modality_detector import detect_modality
 from ..tools.vqa import run_single_vqa
 from ..tools.grounding import run_grounding
 from ..tools.change_detection import run_change_analysis
@@ -25,14 +28,22 @@ def execute_agent_pipeline(
     metadata_list: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Executes the 5-stage agentic remote sensing pipeline.
+    Executes the 5-stage agentic remote sensing pipeline with sensor awareness.
     """
     session_id = str(uuid.uuid4())
     trace = AgentTrace()
     trace.add_step("INGEST", f"Ingested {len(images)} raster stream(s) for query: '{query}'")
     
-    # Stage 1: Query Classification
-    plan = classify_query(query, len(images))
+    # Stage 0: Sensor & Modality Detection
+    modality_analyses = [detect_modality(img) for img in images]
+    for idx, m in enumerate(modality_analyses):
+        trace.add_step(
+            "SENSOR_SCAN",
+            f"Image #{idx+1} diagnosed as {m['sensor_family']} (variance={m['spectral_variance']}, speckle={m['speckle_index']})"
+        )
+    
+    # Stage 1: Query & Sensor Classification
+    plan = classify_query(query, len(images), detected_modalities=modality_analyses)
     trace.add_step(
         "CLASSIFY",
         f"Classified intent as {plan['task']} ({plan['description']}). Selected tool: {plan['tool_name']}",
@@ -57,7 +68,13 @@ def execute_agent_pipeline(
     elif task in ("TEMPORAL_CHANGE", "CHANGE_VQA"):
         tool_res = run_change_analysis(images[0], images[1], query, task=task)
     elif task == "OPTICAL_SAR_FUSION":
-        tool_res = run_optical_sar_fusion(images[0], images[1], query)
+        # Ensure image 0 is optical and image 1 is SAR if mixed
+        if len(images) == 2 and modality_analyses[0]["is_radar"] and not modality_analyses[1]["is_radar"]:
+            # Swap so optical is first
+            opt_img, sar_img = images[1], images[0]
+        else:
+            opt_img, sar_img = images[0], images[1]
+        tool_res = run_optical_sar_fusion(opt_img, sar_img, query)
     else:
         tool_res = run_single_vqa(images[0], query)
         
@@ -82,12 +99,26 @@ def execute_agent_pipeline(
     )
     trace.add_step("REPORT", f"Evidence report packaged with ID: {report['data']['report_id']}")
     
+    # Consolidate guidance notes
+    guidance_notes = []
+    if plan.get("missing_requirement"):
+        guidance_notes.append(plan["missing_requirement"]["message"])
+    if "guidance" in tool_res and isinstance(tool_res["guidance"], dict):
+        if "missing_modality_alert" in tool_res["guidance"]:
+            guidance_notes.append(tool_res["guidance"]["missing_modality_alert"])
+    for m in modality_analyses:
+        for rec in m.get("recommendations", []):
+            if rec not in guidance_notes:
+                guidance_notes.append(rec)
+                
     return {
         "session_id": session_id,
         "query": query,
         "task": plan["task"],
         "task_description": plan["description"],
         "tool_used": plan["tool_name"],
+        "modalities": modality_analyses,
+        "guidance_notes": guidance_notes,
         "answer": tool_res.get("answer"),
         "confidence": confidence,
         "results": tool_res,

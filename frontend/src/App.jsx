@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Sparkles, Send, UploadCloud, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, Send, UploadCloud, Loader2, Layers, BookmarkCheck } from 'lucide-react';
 
 import Header from './components/Header';
+import SmartIngestStudio from './components/SmartIngestStudio';
 import DemoPresetBar from './components/DemoPresetBar';
 import ImageCanvas from './components/ImageCanvas';
 import AgentTraceLog from './components/AgentTraceLog';
@@ -13,7 +14,8 @@ import Footer from './components/Footer';
 import { fetchHealth, fetchDemos, runDemoScenario, analyzeCustomQuery } from './api/client';
 
 export default function App() {
-  const [activeDemoId, setActiveDemoId] = useState('demo-1');
+  const [activeTab, setActiveTab] = useState('studio'); // 'studio' | 'presets'
+  const [activeDemoId, setActiveDemoId] = useState('demo-sar');
   const [customQuery, setCustomQuery] = useState('');
   const [currentResult, setCurrentResult] = useState(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -42,10 +44,10 @@ export default function App() {
 
   const isLoading = demoMutation.isPending || customMutation.isPending;
 
-  // Auto-run Demo 1 on initial load so the user immediately sees a working prototype!
+  // Auto-run Demo SAR on initial load so the user immediately sees the river SAR detection!
   useEffect(() => {
     if (demos.length > 0 && !currentResult && !demoMutation.isPending) {
-      demoMutation.mutate('demo-1');
+      demoMutation.mutate('demo-sar');
     }
   }, [demos.length]);
 
@@ -57,9 +59,7 @@ export default function App() {
   const handleCustomSubmit = (e) => {
     e.preventDefault();
     if (!customQuery.trim()) return;
-    // If the user types a custom question while viewing the current demo image, re-run with active demo
     if (activeDemoId) {
-      // Run with demo images
       demoMutation.mutate(activeDemoId);
     }
   };
@@ -68,17 +68,64 @@ export default function App() {
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans">
       <Header health={health} />
 
-      {/* 1-Click SIH Preset Bar */}
-      <DemoPresetBar
-        demos={demos}
-        activeDemoId={activeDemoId}
-        onSelectDemo={handleSelectDemo}
-        isLoading={isLoading}
-      />
-
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-        {/* Natural Language Query Bar */}
+        {/* Navigation Mode Switcher */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-900/80 border border-zinc-800">
+            <button
+              onClick={() => setActiveTab('studio')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+                activeTab === 'studio'
+                  ? 'bg-sky-500 text-black shadow-md shadow-sky-500/20'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>Smart Ingestion Studio</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-cyan-400/20 text-cyan-900 font-bold">
+                AUTO-DETECT
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('presets')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+                activeTab === 'presets'
+                  ? 'bg-sky-500 text-black shadow-md shadow-sky-500/20'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              <BookmarkCheck className="h-3.5 w-3.5" />
+              <span>1-Click SIH Benchmarks (6 Scenarios)</span>
+            </button>
+          </div>
+
+          <div className="text-xs text-zinc-400 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>Dual Model: SAR C-band Radar + Optical Sentinel-2</span>
+          </div>
+        </div>
+
+        {/* Tab 1: Smart Ingestion Studio */}
+        {activeTab === 'studio' && (
+          <SmartIngestStudio
+            onAnalyze={(query, files) => customMutation.mutate({ query, files })}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Tab 2: 1-Click SIH Preset Bar */}
+        {activeTab === 'presets' && (
+          <DemoPresetBar
+            demos={demos}
+            activeDemoId={activeDemoId}
+            onSelectDemo={handleSelectDemo}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Natural Language Quick Query Bar */}
         <div className="bg-[#121215] border border-zinc-800 p-2.5 rounded-2xl flex items-center gap-3 shadow-xl shadow-black/40">
           <div className="pl-3 text-sky-400">
             <Sparkles className="h-4 w-4" />
@@ -137,7 +184,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Upload Modal */}
+      {/* Upload Modal (fallback) */}
       <UploadModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}

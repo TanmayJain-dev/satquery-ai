@@ -26,7 +26,7 @@ def generate_evidence_report(
     report_dict = {
         "report_id": f"SATQUERY-EVID-{session_id[:8].upper()}",
         "problem_statement": "SIH26167: SatQuery AI (ISRO)",
-        "copyright": "Copyright (c) 2026 Tanmay Jain. All rights reserved.",
+        "copyright": "Copyright (c) 2026 SatQuery AI. All rights reserved.",
         "generated_at": timestamp,
         "query": query,
         "agentic_plan": classification,
@@ -105,7 +105,7 @@ def generate_evidence_report(
     </div>
 
     <div style="margin-top: 32px; border-top: 1px solid #27272a; padding-top: 16px; text-align: center; color: #71717a; font-size: 12px;">
-        &copy; 2026 <strong>Tanmay Jain</strong>. All rights reserved. &middot; SIH26167 SatQuery AI Platform
+        &copy; 2026 <strong>SatQuery AI</strong>. All rights reserved. &middot; SIH26167 SatQuery AI Platform
     </div>
 </body>
 </html>

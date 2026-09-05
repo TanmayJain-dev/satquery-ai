@@ -1,15 +1,14 @@
 """
 test_all_demos.py
 -----------------
-Automated verification script that executes all 5 mandatory SIH26167
-evaluation scenarios and validates accuracy, confidence, and latency.
+Automated verification script that executes all mandatory SIH26167
+evaluation scenarios plus the new Smart Ingestion SAR River Detection test.
 """
 
 import sys
 import time
 from pathlib import Path
 
-# Add project root to sys.path
 root_dir = Path(__file__).resolve().parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
@@ -24,18 +23,6 @@ def run_tests():
     print("=" * 70)
     
     samples_dir = settings.SAMPLES_DIR
-    if not (samples_dir / "optical_single.png").exists():
-        print("Sample data not found. Running generate_samples.py first...")
-        from data.generate_samples import (
-            generate_demo1_optical_scene,
-            generate_demo2_grounding_scene,
-            generate_demo3_4_temporal_pair,
-            generate_demo5_optical_sar_pair
-        )
-        generate_demo1_optical_scene()
-        generate_demo2_grounding_scene()
-        generate_demo3_4_temporal_pair()
-        generate_demo5_optical_sar_pair()
 
     test_cases = [
         {
@@ -45,6 +32,14 @@ def run_tests():
             "query": "Describe the land-cover and major objects visible in this image.",
             "expected_tool": "single_vqa_tool",
             "assert_fn": lambda res: any("Vegetation" in k for k in res["results"]["spectral_distribution"]) and res["confidence"]["confidence_score"] > 0.85
+        },
+        {
+            "id": "DEMO 1-SAR",
+            "name": "Single SAR Radar Ingestion & River Detection (Fixes User Issue)",
+            "files": ["sar_fusion.png"],
+            "query": "What is the dominant land cover and is there any river visible?",
+            "expected_tool": "single_vqa_tool",
+            "assert_fn": lambda res: "River" in res["results"]["dominant_class"] and res["results"]["spectral_distribution"]["Water Body / River Network (Specular Reflection)"] > 40.0
         },
         {
             "id": "DEMO 2",
@@ -115,7 +110,7 @@ def run_tests():
 
     print("\n" + "=" * 70)
     if all_passed:
-        print(f"🎉 ALL 5 SIH EVALUATION SCENARIOS PASSED SUCCESSFULLY! (Avg Latency: {total_time/5:.1f}ms)")
+        print(f"🎉 ALL {len(test_cases)} EVALUATION SCENARIOS PASSED! (Avg Latency: {total_time/len(test_cases):.1f}ms)")
     else:
         print("⚠️ SOME TEST SCENARIOS FAILED. REVIEW OUTPUT ABOVE.")
     print("=" * 70)

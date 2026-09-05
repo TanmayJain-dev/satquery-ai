@@ -10,7 +10,7 @@ export default function DemoPresetBar({ demos, activeDemoId, onSelectDemo, isLoa
           Official SIH Evaluation Scenarios (1-Click Presets)
         </span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {demos.map((d) => {
           const isActive = activeDemoId === d.id;
           return (

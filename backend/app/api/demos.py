@@ -58,6 +58,15 @@ DEMO_SCENARIOS = [
         "modality": "Co-registered Optical + SAR",
         "files": ["optical_fusion.png", "sar_fusion.png"],
         "tag": "Sensor Fusion"
+    },
+    {
+        "id": "demo-sar",
+        "title": "Demo 6: SAR River Ingestion",
+        "subtitle": "Sentinel-1 Radar Specular River & Structure Detection",
+        "query": "What is the dominant land cover and is there any river visible?",
+        "modality": "Single SAR (C-Band Radar)",
+        "files": ["sar_fusion.png"],
+        "tag": "SAR Radar"
     }
 ]
 
