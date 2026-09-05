@@ -4,6 +4,8 @@
 **Organization:** Indian Space Research Organisation (ISRO) / Department of Space  
 **System Type:** Interactive Vision-Language Assistant for Multimodal Remote Sensing Image Analysis through Natural Language Text Queries
 
+> 📘 **Judges & Evaluators Manual**: For the exhaustive 25,000-word component-by-component architectural specification, microwave derivations, and the **100 Battle-Tested Questions & Answers for Judges**, see the [**Technical Architecture & 100-Question Judges Defense Manual**](TECHNICAL_ARCHITECTURE_AND_DEFENSE_MANUAL.md).
+
 ---
 
 ## 📖 1. Executive Summary & Problem Context
