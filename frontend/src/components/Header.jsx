@@ -24,9 +24,9 @@ export default function Header({ health }) {
       </div>
 
       <div className="flex items-center gap-4 text-xs">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300">
-          <Cpu className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Engine: <span className="text-white font-mono">Classical RS/CV (Ultra-Fast)</span></span>
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300">
+          <Cpu className="h-3.5 w-3.5 text-sky-400" />
+          <span>Core: <span className="text-white font-mono">Neuro-Symbolic (LLM Agent + RS Physics)</span></span>
         </div>
 
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">

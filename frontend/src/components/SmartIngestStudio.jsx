@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { prescanFiles, getFullApiUrl } from '../api/client';
 
-export default function SmartIngestStudio({ onAnalyze, isLoading }) {
+export default function SmartIngestStudio({ onAnalyze, isLoading, isCollapsed, onToggleCollapse }) {
   const [files, setFiles] = useState([]);
   const [query, setQuery] = useState('');
   const [prescanData, setPrescanData] = useState(null);
@@ -23,6 +23,37 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
   const [companionDragActive, setCompanionDragActive] = useState(false);
   const fileInputRef = useRef(null);
   const companionInputRef = useRef(null);
+
+  if (isCollapsed) {
+    return (
+      <div className="rounded-2xl border border-zinc-800 bg-[#0f0f13] p-3.5 px-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-300">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
+            <Layers className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-white flex items-center gap-2">
+              <span>Ingested Rasters:</span>
+              <span className="text-zinc-300 font-mono">
+                {files.length > 0 ? files.map(f => f.name).join(' + ') : 'Active Satellite Scene'}
+              </span>
+            </div>
+            <div className="text-[11px] text-zinc-400 truncate max-w-[550px]">
+              Query: <span className="text-sky-300 italic">"{query || 'Scene Land-Cover & River Analysis'}"</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-sky-300 border border-zinc-700 transition flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm"
+        >
+          <span>Modify Query / Upload New Imagery</span>
+        </button>
+      </div>
+    );
+  }
 
   const handleFiles = async (newFiles) => {
     if (!newFiles || newFiles.length === 0) return;
@@ -74,10 +105,10 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
   const removeFile = (idx) => {
     const updated = files.filter((_, i) => i !== idx);
     setFiles(updated);
-    if (updated.length > 0) {
-      handleFiles(updated);
-    } else {
+    if (updated.length === 0) {
       setPrescanData(null);
+    } else {
+      prescanFiles(updated).then(setPrescanData);
     }
   };
 
@@ -88,10 +119,10 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
       let sampleQuery = '';
       if (type === 'sar-river') {
         fileNames = ['sar_fusion.png'];
-        sampleQuery = 'What is the dominant land cover and is there any river visible?';
+        sampleQuery = 'What is the dominant land cover and is there any river visible in this radar image?';
       } else if (type === 'optical') {
         fileNames = ['optical_single.png'];
-        sampleQuery = 'Describe the land-cover and major objects visible in this image.';
+        sampleQuery = 'Describe the land-cover distribution and major hydrological features in this scene.';
       } else if (type === 'fusion') {
         fileNames = ['optical_fusion.png', 'sar_fusion.png'];
         sampleQuery = 'Use optical and SAR images together to identify built-up and water through cloud cover.';
@@ -126,7 +157,6 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
   };
 
   const isSingleSAR = prescanData?.modalities?.length === 1 && prescanData.modalities[0].is_radar;
-  const isDualReady = files.length === 2;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-[#0f0f13] p-6 lg:p-7 shadow-2xl relative overflow-hidden">
@@ -142,11 +172,11 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
               <Layers className="h-5 w-5" />
             </div>
             <h2 className="text-lg font-bold text-white tracking-tight">
-              Universal Smart Ingestion & Auto-Guidance Studio
+              Upload Satellite Imagery
             </h2>
           </div>
           <p className="text-sm text-zinc-400 mt-1.5 leading-relaxed">
-            Drop any satellite raster (SAR Radar or Optical Multispectral). The engine automatically diagnoses sensor physics, maps visible features, and advises if companion imagery is needed.
+            Ingest satellite rasters (SAR Radar or Optical Multispectral). The engine automatically diagnoses sensor physics, maps surface features, and advises if companion imagery is needed.
           </p>
         </div>
 
@@ -447,7 +477,7 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
         {/* Query Input Section */}
         <div className="space-y-3">
           <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
-            Natural Language Query for Domain Specialist
+            Ask About This Image
           </label>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 focus-within:border-sky-500 transition shadow-inner">
             <Sparkles className="h-5 w-5 text-sky-400 ml-1 flex-shrink-0" />
@@ -494,7 +524,7 @@ export default function SmartIngestStudio({ onAnalyze, isLoading }) {
               </>
             ) : (
               <>
-                <span>Run SatQuery AI Agent</span>
+                <span>Analyse Image</span>
                 <ArrowRight className="h-4 w-4" />
               </>
             )}

@@ -19,6 +19,7 @@ export default function App() {
   const [customQuery, setCustomQuery] = useState('');
   const [currentResult, setCurrentResult] = useState(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isStudioCollapsed, setIsStudioCollapsed] = useState(false);
 
   // Queries
   const { data: health } = useQuery({ queryKey: ['health'], queryFn: fetchHealth });
@@ -31,6 +32,7 @@ export default function App() {
     mutationFn: runDemoScenario,
     onSuccess: (data) => {
       setCurrentResult(data);
+      setIsStudioCollapsed(true);
     },
   });
 
@@ -39,6 +41,7 @@ export default function App() {
     mutationFn: ({ query, files }) => analyzeCustomQuery(query, files),
     onSuccess: (data) => {
       setCurrentResult(data);
+      setIsStudioCollapsed(true);
     },
   });
 
@@ -97,7 +100,7 @@ export default function App() {
               }`}
             >
               <BookmarkCheck className="h-4 w-4" />
-              <span>1-Click SIH Benchmarks (6 Scenarios)</span>
+              <span>1-Click SIH Benchmarks (7 Scenarios)</span>
             </button>
           </div>
 
@@ -112,6 +115,8 @@ export default function App() {
           <SmartIngestStudio
             onAnalyze={(query, files) => customMutation.mutate({ query, files })}
             isLoading={isLoading}
+            isCollapsed={isStudioCollapsed && !!currentResult}
+            onToggleCollapse={() => setIsStudioCollapsed(!isStudioCollapsed)}
           />
         )}
 

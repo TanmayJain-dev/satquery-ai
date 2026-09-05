@@ -32,6 +32,29 @@ def run_grounding(img: np.ndarray, target: str, query: str) -> Dict[str, Any]:
     label_name = target.capitalize()
     box_color = (0, 229, 255)  # Neon cyan default
     
+    # Preflight Check for Heavy Cloud Obscuration
+    if not is_sar:
+        cloud_mask = (r > 225) & (g > 225) & (b > 225)
+        cloud_pct = round((float(np.sum(cloud_mask)) / (h * w)) * 100, 2)
+        if cloud_pct > 60.0:
+            return {
+                "tool": "grounding_tool",
+                "target": target,
+                "answer": (
+                    f"**CANNOT CONFIRM: Grounding Aborted Due to {cloud_pct}% Cloud Saturation.**\n\n"
+                    f"Ground targets ('{target}') are physically obscured by dense tropospheric cloud cover. "
+                    f"Bounding box localization requires unobstructed surface boundaries. "
+                    f"Please ingest a Sentinel-1 SAR C-band companion raster to localize features through clouds."
+                ),
+                "insufficient_evidence": True,
+                "modality_info": modality_info,
+                "detected_count": 0,
+                "bounding_boxes": [],
+                "mask_overlay_url": array_to_base64_png(img),
+                "annotated_url": array_to_base64_png(img),
+                "raw_image_url": array_to_base64_png(img)
+            }
+    
     # 1. Spatial Segmentation based on target entity and sensor modality
     if target in ("water", "lake", "river"):
         if is_sar:
@@ -134,5 +157,6 @@ def run_grounding(img: np.ndarray, target: str, query: str) -> Dict[str, Any]:
         "detected_count": len(boxes),
         "bounding_boxes": boxes,
         "mask_overlay_url": encode_mask_overlay(base_rgb, clean_mask, color=box_color, alpha=0.35),
-        "annotated_url": array_to_base64_png(annotated_arr)
+        "annotated_url": array_to_base64_png(annotated_arr),
+        "raw_image_url": array_to_base64_png(base_rgb)
     }

@@ -40,27 +40,33 @@ def execute_agent_pipeline(
     for idx, m in enumerate(modality_analyses):
         trace.add_step(
             "SENSOR_SCAN",
-            f"Image #{idx+1} diagnosed as {m['sensor_family']} (variance={m['spectral_variance']}, speckle={m['speckle_index']})"
+            f"Raster #{idx+1}: Diagnosed as {m['sensor_family']} (speckle index={m['speckle_index']})",
+            {"subsystem": "Classical RS Diagnostic", "component": "Radiometric & Spatial Feature Extractor", "derivation": m.get("sensor_derivation")}
         )
     
     # Stage 1: Query & Sensor Classification
     plan = classify_query(query, len(images), detected_modalities=modality_analyses)
     trace.add_step(
-        "CLASSIFY",
-        f"Classified intent as {plan['task']} ({plan['description']}). Selected tool: {plan['tool_name']}",
-        {"expected_images": plan["expected_images"], "target": plan["target"]}
+        "INTENT_PLAN",
+        f"Interpreted query intent: mapped to task '{plan['task']}' with target '{plan['target']}'. Selected execution tool: {plan['tool_name']}",
+        {"subsystem": "AI Agent Reasoner", "component": "Semantic Intent Parser & Tool Planner", "expected_images": plan["expected_images"]}
     )
     
     # Stage 2: Input Validation
     validation = validate_inputs(images, plan["expected_images"], modality=plan["task"])
     trace.add_step(
         "VALIDATE",
-        f"Verified {validation['image_count']} image(s), dimension: {validation['dimensions']}, co-registered: {validation['co_registered']}"
+        f"Verified {validation['image_count']} raster(s) @ {validation['dimensions']}, co-registration valid: {validation['co_registered']}",
+        {"subsystem": "Geospatial Preflight", "component": "Affine Grid & Co-Registration Validator"}
     )
     
     # Stage 3: Tool Execution
     task = plan["task"]
-    trace.add_step("DISPATCH", f"Dispatching execution payload to specialist tool '{plan['tool_name']}'")
+    trace.add_step(
+        "DISPATCH", 
+        f"Dispatching payload to specialist tool '{plan['tool_name']}'",
+        {"subsystem": "AI Agent Orchestrator", "component": "Deterministic Tool Dispatcher"}
+    )
     
     if task == "SINGLE_VQA":
         tool_res = run_single_vqa(images[0], query)
@@ -71,7 +77,6 @@ def execute_agent_pipeline(
     elif task == "OPTICAL_SAR_FUSION":
         # Ensure image 0 is optical and image 1 is SAR if mixed
         if len(images) == 2 and modality_analyses[0]["is_radar"] and not modality_analyses[1]["is_radar"]:
-            # Swap so optical is first
             opt_img, sar_img = images[1], images[0]
         else:
             opt_img, sar_img = images[0], images[1]
@@ -79,13 +84,18 @@ def execute_agent_pipeline(
     else:
         tool_res = run_single_vqa(images[0], query)
         
-    trace.add_step("COMPUTE", f"Specialist tool '{plan['tool_name']}' completed execution with verified measurements")
+    trace.add_step(
+        "COMPUTE", 
+        f"Executed spatial algorithms in '{plan['tool_name']}'. Extracted physical indices and area statistics.",
+        {"subsystem": "Classical RS/CV Engine", "component": "Deterministic Physical Algorithm Pipeline"}
+    )
     
     # Stage 4: Dual-Estimate Confidence Scoring
     confidence = compute_confidence(task, tool_res, len(images))
     trace.add_step(
         "CONFIDENCE",
-        f"Calculated dual-estimate confidence: {confidence['confidence_percentage']} ({confidence['rating']})"
+        f"Derived empirical confidence: {confidence['confidence_percentage']} ({confidence['rating']})",
+        {"subsystem": "Uncertainty Engine", "component": "Multi-Factor Statistical Consensus Evaluator", "formula": confidence.get("mathematical_formula")}
     )
     
     # Stage 5: Evidence Compilation
@@ -98,19 +108,31 @@ def execute_agent_pipeline(
         confidence=confidence,
         trace_log=trace.get_trace_log()
     )
-    trace.add_step("REPORT", f"Evidence report packaged with ID: {report['data']['report_id']}")
+    trace.add_step(
+        "REPORT", 
+        f"Packaged verifiable evidence report: {report['data']['report_id']}",
+        {"subsystem": "Evidence Synthesizer", "component": "Audit Report Generator"}
+    )
     
-    # Consolidate guidance notes
+    # Consolidate and strictly deduplicate guidance notes
     guidance_notes = []
+    seen = set()
     if plan.get("missing_requirement"):
-        guidance_notes.append(plan["missing_requirement"]["message"])
+        msg = plan["missing_requirement"]["message"]
+        if msg not in seen:
+            guidance_notes.append(msg)
+            seen.add(msg)
     if "guidance" in tool_res and isinstance(tool_res["guidance"], dict):
         if "missing_modality_alert" in tool_res["guidance"]:
-            guidance_notes.append(tool_res["guidance"]["missing_modality_alert"])
+            msg = tool_res["guidance"]["missing_modality_alert"]
+            if msg not in seen:
+                guidance_notes.append(msg)
+                seen.add(msg)
     for m in modality_analyses:
         for rec in m.get("recommendations", []):
-            if rec not in guidance_notes:
+            if rec not in seen:
                 guidance_notes.append(rec)
+                seen.add(rec)
                 
     # Store report for new tab viewing via /api/report/{session_id} or /api/report/{report_id}
     store_report(session_id, report["html"], report["data"])
