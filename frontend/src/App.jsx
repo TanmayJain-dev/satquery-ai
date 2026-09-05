@@ -8,6 +8,7 @@ import ImageCanvas from './components/ImageCanvas';
 import AgentTraceLog from './components/AgentTraceLog';
 import ResultInspector from './components/ResultInspector';
 import UploadModal from './components/UploadModal';
+import Footer from './components/Footer';
 
 import { fetchHealth, fetchDemos, runDemoScenario, analyzeCustomQuery } from './api/client';
 
@@ -143,6 +144,9 @@ export default function App() {
         onSubmit={(query, files) => customMutation.mutate({ query, files })}
         isLoading={customMutation.isPending}
       />
+
+      {/* Copyright Footer */}
+      <Footer />
     </div>
   );
 }

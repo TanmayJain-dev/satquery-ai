@@ -179,6 +179,7 @@ Tested locally on an entry-level CPU (Intel Core i3, 4GB RAM):
 
 ---
 
-## 📜 7. License & Attribution
+## 📜 7. License & Copyright
 
-Developed for the **Smart India Hackathon (SIH 2026)** under ISRO Problem Statement **SIH26167**. Released under the MIT License.
+&copy; 2026 **Tanmay Jain**. All rights reserved.  
+Developed for the **Smart India Hackathon (SIH 2026)** under ISRO Problem Statement **SIH26167**. Released under the [MIT License](LICENSE).
