@@ -1,7 +1,7 @@
 # part1_architecture.py
 
 def get_part1():
-    return """# SATQUERY AI: COMPREHENSIVE TECHNICAL ARCHITECTURE & 100-QUESTION JUDGES DEFENSE MANUAL
+    return r"""# SATQUERY AI: COMPREHENSIVE TECHNICAL ARCHITECTURE & 100-QUESTION JUDGES DEFENSE MANUAL
 ### Official Technical Specification, Physical Derivations, and Defense Guide for Smart India Hackathon (SIH26167 — ISRO Problem Statement)
 
 **Authors / System Architects:** Prachi Bhalla & Core Engineering Team  
