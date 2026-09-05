@@ -76,7 +76,7 @@ def run_tests():
             "files": ["optical_fusion.png", "sar_fusion.png"],
             "query": "Use optical and SAR images together to identify built-up and water through cloud cover.",
             "expected_tool": "optical_sar_fusion_tool",
-            "assert_fn": lambda res: res["results"]["cloud_obscuration_percentage"] > 10.0 and "fused_url" in res["results"]
+            "assert_fn": lambda res: res["results"]["fused_water_percentage"] > 5.0 and "fused_url" in res["results"]
         }
     ]
 
