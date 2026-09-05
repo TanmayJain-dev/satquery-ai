@@ -1,10 +1,45 @@
-import React from 'react';
-import { ShieldCheck, FileDown, BarChart3, Info, AlertTriangle, Radio } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  ShieldCheck, 
+  FileDown, 
+  ExternalLink, 
+  BarChart3, 
+  Info, 
+  AlertTriangle, 
+  Radio, 
+  Layers, 
+  Cpu, 
+  Activity, 
+  Copy, 
+  Check, 
+  Compass
+} from 'lucide-react';
 
 export default function ResultInspector({ result }) {
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'bands' | 'physics' | 'raw'
+  const [copied, setCopied] = useState(false);
+
   if (!result) return null;
 
-  const { answer, confidence, results, report_id, report_html, session_id, modalities, guidance_notes } = result;
+  const { 
+    answer, 
+    confidence, 
+    results, 
+    report_id, 
+    report_html, 
+    session_id, 
+    modalities, 
+    guidance_notes,
+    engineering_telemetry,
+    report_url
+  } = result;
+
+  // Sensor modality info
+  const primaryModality = modalities?.[0] || results?.modality_info;
+  const isRadar = primaryModality?.is_radar || results?.measured_metrics?.is_radar;
+  const spatialMetrics = primaryModality?.spatial_metrics || {};
+  const bandTelemetry = primaryModality?.band_telemetry || [];
+  const eng = engineering_telemetry || results?.engineering_telemetry || {};
 
   const handleDownloadReport = () => {
     const blob = new Blob([report_html], { type: 'text/html' });
@@ -16,145 +51,390 @@ export default function ResultInspector({ result }) {
     URL.revokeObjectURL(url);
   };
 
-  // Check detected sensor family
-  const primaryModality = modalities?.[0] || results?.modality_info;
-  const isRadar = primaryModality?.is_radar || results?.measured_metrics?.is_radar;
+  const handleOpenInNewTab = () => {
+    const targetUrl = report_url || `/api/report/${session_id}`;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyJson = () => {
+    const jsonStr = JSON.stringify(result, null, 2);
+    navigator.clipboard.writeText(jsonStr);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-[#0c0c0e] p-4 flex flex-col gap-4">
-      {/* Sensor Modality Tag */}
-      {primaryModality && (
-        <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800">
-          <div className="flex items-center gap-2">
-            <Radio className="h-4 w-4 text-sky-400" />
-            <span className="text-xs font-semibold text-zinc-200">
-              Sensor Diagnosis: {primaryModality.sensor_family || (isRadar ? 'Sentinel-1 SAR Radar' : 'Sentinel-2 MSI Optical')}
-            </span>
+    <div className="rounded-2xl border border-zinc-800 bg-[#0c0c0e] shadow-xl flex flex-col overflow-hidden">
+      {/* Top Header & Sensor Badge */}
+      <div className="p-4 border-b border-zinc-800/80 bg-zinc-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className={`p-1.5 rounded-lg border ${
+            isRadar 
+              ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' 
+              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+          }`}>
+            <Radio className="h-4 w-4" />
           </div>
-          <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
-              isRadar
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-            }`}
+          <div>
+            <div className="text-xs font-semibold text-white tracking-tight">
+              {primaryModality?.sensor_family || (isRadar ? 'Sentinel-1 C-Band SAR' : 'Sentinel-2 MSI Optical')}
+            </div>
+            <div className="text-[11px] text-zinc-400 font-mono">
+              Session: {session_id?.slice(0, 8)} &middot; {spatialMetrics?.ground_sampling_distance_m || 10}m GSD
+            </div>
+          </div>
+        </div>
+
+        {/* Dual Actions: View in New Tab & Download */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenInNewTab}
+            title="Open comprehensive interactive report in a new browser tab"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 text-xs font-medium transition"
           >
-            {isRadar ? 'SAR Backscatter' : 'Optical MSI'}
-          </span>
-        </div>
-      )}
-
-      {/* Answer Block */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-            <Info className="h-3.5 w-3.5 text-sky-400" />
-            Evidence-Grounded Finding
-          </span>
-          <span className="text-[10px] text-zinc-500 font-mono">Tool: {result.tool_used}</span>
-        </div>
-        <div className="p-3.5 rounded-lg bg-zinc-900/60 border border-zinc-800/80 text-sm leading-relaxed text-zinc-200 whitespace-pre-line">
-          {answer}
-        </div>
-      </div>
-
-      {/* Guidance Notes & Missing Modality Recommendations */}
-      {((guidance_notes && guidance_notes.length > 0) || results?.guidance) && (
-        <div className="p-3 rounded-lg bg-amber-950/20 border border-amber-500/30 text-xs space-y-1.5">
-          <div className="font-semibold text-amber-300 flex items-center gap-1.5">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-            <span>Intelligent Sensor Guidance & Recommendation</span>
-          </div>
-          {results?.guidance?.missing_modality_alert && (
-            <p className="text-zinc-300 text-[11px] leading-relaxed">
-              {results.guidance.missing_modality_alert}
-            </p>
-          )}
-          {guidance_notes && guidance_notes.map((note, idx) => (
-            <p key={idx} className="text-zinc-300 text-[11px] leading-relaxed">
-              {note}
-            </p>
-          ))}
-        </div>
-      )}
-
-      {/* Confidence & Verification Gauge */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-lg bg-zinc-900/40 border border-zinc-800/80">
-          <div className="text-[11px] text-zinc-400 mb-1 flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-            Dual-Estimate Confidence
-          </div>
-          <div className="text-lg font-bold text-white flex items-baseline gap-1.5">
-            {confidence?.confidence_percentage || '95.0%'}
-            <span className="text-[10px] font-normal text-emerald-400">
-              {confidence?.rating || 'HIGH CONFIDENCE'}
-            </span>
-          </div>
-        </div>
-
-        <div className="p-3 rounded-lg bg-zinc-900/40 border border-zinc-800/80 flex flex-col justify-between">
-          <div className="text-[11px] text-zinc-400 mb-1">Judge Audit Report</div>
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span>View in New Tab</span>
+          </button>
           <button
             onClick={handleDownloadReport}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 text-xs font-medium transition"
+            title="Download standalone offline HTML report"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 hover:text-white text-xs font-medium transition"
           >
             <FileDown className="h-3.5 w-3.5" />
-            Export HTML Report
+            <span>Download</span>
           </button>
         </div>
       </div>
 
-      {/* Spectral or Radar Measurement Breakdown if available */}
-      {results?.spectral_distribution && (
-        <div>
-          <div className="text-[11px] font-semibold text-zinc-400 mb-2 flex items-center gap-1">
-            <BarChart3 className="h-3.5 w-3.5 text-purple-400" />
-            {isRadar ? 'Radar Backscatter Physical Distribution' : 'Spectral Land-Cover Distribution'}
-          </div>
-          <div className="space-y-1.5">
-            {Object.entries(results.spectral_distribution).map(([cls, pct]) => (
-              <div key={cls} className="text-xs">
-                <div className="flex justify-between text-zinc-400 text-[11px] mb-0.5">
-                  <span>{cls}</span>
-                  <span className="font-mono text-zinc-200">{pct}%</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      cls.includes('Water') || cls.includes('River')
-                        ? 'bg-cyan-400'
-                        : cls.includes('Built-up') || cls.includes('Structural')
-                        ? 'bg-amber-400'
-                        : 'bg-emerald-400'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Tabs Navigation for Desktop */}
+      <div className="flex items-center px-4 pt-3 border-b border-zinc-800/80 bg-zinc-950/40 gap-1 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition border-b-2 ${
+            activeTab === 'overview'
+              ? 'border-sky-500 text-sky-400 bg-zinc-900/50'
+              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Info className="h-3.5 w-3.5" />
+          <span>Overview</span>
+        </button>
 
-      {/* Bounding Box List if Grounding */}
-      {results?.bounding_boxes && results.bounding_boxes.length > 0 && (
-        <div>
-          <div className="text-[11px] font-semibold text-zinc-400 mb-2">
-            Localized Target Coordinates
-          </div>
-          <div className="max-h-32 overflow-y-auto space-y-1 text-[11px] font-mono">
-            {results.bounding_boxes.map((b) => (
-              <div
-                key={b.id}
-                className="p-1.5 rounded bg-zinc-900/60 border border-zinc-800 flex justify-between items-center text-zinc-300"
-              >
-                <span>{b.label}</span>
-                <span className="text-sky-400">[{b.normalized_box_1000.join(', ')}]</span>
+        <button
+          onClick={() => setActiveTab('bands')}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition border-b-2 ${
+            activeTab === 'bands'
+              ? 'border-sky-500 text-sky-400 bg-zinc-900/50'
+              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+          <span>Band Telemetry</span>
+          {bandTelemetry.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded text-[10px] bg-zinc-800 text-zinc-400 font-mono">
+              {bandTelemetry.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('physics')}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition border-b-2 ${
+            activeTab === 'physics'
+              ? 'border-sky-500 text-sky-400 bg-zinc-900/50'
+              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Compass className="h-3.5 w-3.5" />
+          <span>{isRadar ? 'Radar Physics' : 'Spectral Indices'}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('raw')}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition border-b-2 ${
+            activeTab === 'raw'
+              ? 'border-sky-500 text-sky-400 bg-zinc-900/50'
+              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Cpu className="h-3.5 w-3.5" />
+          <span>Raw Audit Matrix</span>
+        </button>
+      </div>
+
+      {/* Tab Content Body */}
+      <div className="p-4 space-y-4 max-h-[680px] overflow-y-auto">
+        {/* TAB 1: OVERVIEW */}
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            {/* Answer Block */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5 text-sky-400" />
+                  Evidence-Grounded Finding
+                </span>
+                <span className="text-xs text-zinc-500 font-mono">Tool: {result.tool_used}</span>
               </div>
-            ))}
+              <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 text-sm leading-relaxed text-zinc-100 whitespace-pre-line shadow-inner">
+                {answer}
+              </div>
+            </div>
+
+            {/* Guidance & Missing Modality Alerts */}
+            {((guidance_notes && guidance_notes.length > 0) || results?.guidance) && (
+              <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/30 text-xs space-y-2">
+                <div className="font-semibold text-amber-300 flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-400" />
+                  <span>Intelligent Sensor Recommendation</span>
+                </div>
+                {results?.guidance?.missing_modality_alert && (
+                  <p className="text-zinc-300 text-xs leading-relaxed">
+                    {results.guidance.missing_modality_alert}
+                  </p>
+                )}
+                {guidance_notes && guidance_notes.map((note, idx) => (
+                  <p key={idx} className="text-zinc-300 text-xs leading-relaxed">
+                    {note}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Confidence & Dual Gauge */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800">
+                <div className="text-xs text-zinc-400 mb-1 flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                  <span>Dual-Estimate Confidence</span>
+                </div>
+                <div className="text-xl font-bold text-white flex items-baseline gap-2">
+                  {confidence?.confidence_percentage || '95.0%'}
+                  <span className="text-xs font-medium text-emerald-400">
+                    {confidence?.rating || 'HIGH'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800">
+                <div className="text-xs text-zinc-400 mb-1 flex items-center gap-1.5">
+                  <Compass className="h-4 w-4 text-purple-400" />
+                  <span>Spatial Coverage</span>
+                </div>
+                <div className="text-xl font-bold text-white font-mono">
+                  {spatialMetrics.total_area_km2 || results?.measured_metrics?.total_area_km2 || '26.2'} <span className="text-xs font-normal text-zinc-400">km²</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Distribution Bars */}
+            {results?.spectral_distribution && (
+              <div className="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-2.5">
+                <div className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
+                  <span>{isRadar ? 'Radar Backscatter Zones' : 'Land-Cover Distribution'}</span>
+                  <span className="text-[11px] text-zinc-500 font-mono">100% Normalized</span>
+                </div>
+                <div className="space-y-2">
+                  {Object.entries(results.spectral_distribution).map(([cls, pct]) => (
+                    <div key={cls} className="text-xs">
+                      <div className="flex justify-between text-zinc-300 mb-1">
+                        <span className="truncate pr-2">{cls}</span>
+                        <span className="font-mono font-semibold text-zinc-100">{pct}%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            cls.includes('Water') || cls.includes('River')
+                              ? 'bg-cyan-400 shadow-sm shadow-cyan-400/50'
+                              : cls.includes('Built-up') || cls.includes('Structural')
+                              ? 'bg-amber-400 shadow-sm shadow-amber-400/50'
+                              : 'bg-emerald-400 shadow-sm shadow-emerald-400/50'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* TAB 2: BAND TELEMETRY */}
+        {activeTab === 'bands' && (
+          <div className="space-y-3">
+            <div className="text-xs text-zinc-400">
+              Statistical & radiometric engineering telemetry across discrete acquisition channels:
+            </div>
+            {bandTelemetry.length > 0 ? (
+              <div className="overflow-x-auto rounded-xl border border-zinc-800">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-zinc-900/80 border-b border-zinc-800 text-zinc-400">
+                      <th className="p-2.5 font-semibold">Band / Channel</th>
+                      <th className="p-2.5 font-semibold">Mean</th>
+                      <th className="p-2.5 font-semibold">Std Dev</th>
+                      <th className="p-2.5 font-semibold">Min-Max</th>
+                      <th className="p-2.5 font-semibold">SNR (dB)</th>
+                      <th className="p-2.5 font-semibold">Entropy</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60 font-mono">
+                    {bandTelemetry.map((b, idx) => (
+                      <tr key={idx} className="hover:bg-zinc-900/30 text-zinc-300">
+                        <td className="p-2.5 font-sans font-medium text-sky-400">{b.band}</td>
+                        <td className="p-2.5 font-semibold text-white">{b.mean}</td>
+                        <td className="p-2.5 text-zinc-400">{b.std}</td>
+                        <td className="p-2.5 text-zinc-400">[{b.min} - {b.max}]</td>
+                        <td className="p-2.5 text-emerald-400 font-semibold">{b.snr_db} dB</td>
+                        <td className="p-2.5 text-purple-300">{b.entropy_bits} bits</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg bg-zinc-900/40 border border-zinc-800 text-xs text-zinc-500">
+                Band telemetry available on multi-band raster ingestion.
+              </div>
+            )}
+
+            {/* Geodetic Reference Card */}
+            <div className="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-1.5 text-xs">
+              <div className="font-semibold text-zinc-300">Spatial & Geodetic Metadata</div>
+              <div className="grid grid-cols-2 gap-2 text-zinc-400 font-mono text-[11px] pt-1">
+                <div>CRS: <span className="text-zinc-200">{spatialMetrics.spatial_crs || 'EPSG:32643'}</span></div>
+                <div>GSD: <span className="text-zinc-200">{spatialMetrics.ground_sampling_distance_m || 10.0} m/px</span></div>
+                <div>Total Pixels: <span className="text-zinc-200">{results?.measured_metrics?.total_pixels?.toLocaleString() || '262,144'}</span></div>
+                <div>Area: <span className="text-zinc-200">{spatialMetrics.total_area_km2 || '26.21'} km² ({spatialMetrics.total_hectares || '2621'} ha)</span></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: RADAR PHYSICS & SPECTRAL INDICES */}
+        {activeTab === 'physics' && (
+          <div className="space-y-3">
+            {isRadar ? (
+              <>
+                <div className="text-xs text-zinc-400">
+                  Calibrated microwave backscatter cross-sections ($\sigma^0$) and hydrological geometry:
+                </div>
+                {eng.calibrated_backscatter_sigma0_db && (
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/30">
+                      <div className="text-[11px] text-cyan-400 font-medium">Specular Water σ⁰</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5">
+                        {eng.calibrated_backscatter_sigma0_db.specular_water_mean} dB
+                      </div>
+                      <div className="text-[10px] text-zinc-500 mt-1">
+                        Threshold: &lt; {eng.calibrated_backscatter_sigma0_db.specular_threshold_limit} dB
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                      <div className="text-[11px] text-zinc-400 font-medium">Diffuse Terrain σ⁰</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5">
+                        {eng.calibrated_backscatter_sigma0_db.diffuse_terrain_mean} dB
+                      </div>
+                      <div className="text-[10px] text-zinc-500 mt-1">Roughness scatter</div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-500/30">
+                      <div className="text-[11px] text-amber-400 font-medium">Double-Bounce σ⁰</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5">
+                        +{eng.calibrated_backscatter_sigma0_db.double_bounce_structure_mean} dB
+                      </div>
+                      <div className="text-[10px] text-zinc-500 mt-1">
+                        Threshold: &gt; {eng.calibrated_backscatter_sigma0_db.double_bounce_threshold_limit} dB
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {eng.hydrological_geometry && (
+                  <div className="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-2 text-xs">
+                    <div className="font-semibold text-zinc-300">Hydrological Corridor Morphology</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-zinc-400 font-mono text-[11px] pt-1">
+                      <div className="p-2 rounded bg-zinc-900 border border-zinc-800">
+                        <div className="text-zinc-500 text-[10px]">Channel Length</div>
+                        <div className="text-white font-bold">{eng.hydrological_geometry.estimated_channel_length_km} km</div>
+                      </div>
+                      <div className="p-2 rounded bg-zinc-900 border border-zinc-800">
+                        <div className="text-zinc-500 text-[10px]">Mean Width</div>
+                        <div className="text-white font-bold">{eng.hydrological_geometry.mean_channel_width_m} m</div>
+                      </div>
+                      <div className="p-2 rounded bg-zinc-900 border border-zinc-800">
+                        <div className="text-zinc-500 text-[10px]">Sinuosity Index</div>
+                        <div className="text-white font-bold">{eng.hydrological_geometry.sinuosity_index}</div>
+                      </div>
+                      <div className="p-2 rounded bg-zinc-900 border border-zinc-800">
+                        <div className="text-zinc-500 text-[10px]">Equivalent Looks</div>
+                        <div className="text-white font-bold">ENL: {eng.equivalent_number_of_looks_enl}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="text-xs text-zinc-400">
+                  Multispectral absorption and vegetation vitality indices:
+                </div>
+                {eng.spectral_indices && (
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
+                      <div className="text-[11px] text-emerald-400 font-medium">Mean NDVI</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5">
+                        {eng.spectral_indices.ndvi_mean}
+                      </div>
+                      <div className="text-[10px] text-zinc-500 mt-1">
+                        Peak P90: {eng.spectral_indices.ndvi_p90_peak}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/30">
+                      <div className="text-[11px] text-cyan-400 font-medium">Mean NDWI</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5">
+                        {eng.spectral_indices.ndwi_mean}
+                      </div>
+                      <div className="text-[10px] text-zinc-500 mt-1">Water absorption</div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-500/30">
+                      <div className="text-[11px] text-amber-400 font-medium">Chlorophyll Ratio</div>
+                      <div className="text-lg font-bold text-white font-mono mt-0.5">
+                        {eng.spectral_indices.canopy_chlorophyll_absorption_ratio}x
+                      </div>
+                      <div className="text-[10px] text-zinc-500 mt-1">Green / Red</div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: RAW AUDIT MATRIX */}
+        {activeTab === 'raw' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-400">Structured JSON provenance payload:</span>
+              <button
+                onClick={handleCopyJson}
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-300 transition"
+              >
+                {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                <span>{copied ? 'Copied!' : 'Copy JSON'}</span>
+              </button>
+            </div>
+            <pre className="p-3.5 rounded-xl bg-black/80 border border-zinc-800 text-[11px] font-mono text-zinc-300 max-h-80 overflow-y-auto leading-relaxed">
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

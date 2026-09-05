@@ -21,6 +21,7 @@ from ..tools.change_detection import run_change_analysis
 from ..tools.optical_sar import run_optical_sar_fusion
 from ..evidence.confidence import compute_confidence
 from ..evidence.report_generator import generate_evidence_report
+from ..api.report import store_report
 
 def execute_agent_pipeline(
     query: str,
@@ -111,6 +112,10 @@ def execute_agent_pipeline(
             if rec not in guidance_notes:
                 guidance_notes.append(rec)
                 
+    # Store report for new tab viewing via /api/report/{session_id} or /api/report/{report_id}
+    store_report(session_id, report["html"], report["data"])
+    store_report(report["data"]["report_id"], report["html"], report["data"])
+    
     return {
         "session_id": session_id,
         "query": query,
@@ -122,8 +127,10 @@ def execute_agent_pipeline(
         "answer": tool_res.get("answer"),
         "confidence": confidence,
         "results": tool_res,
+        "engineering_telemetry": tool_res.get("engineering_telemetry", {}),
         "trace": trace.get_trace_log(),
         "report_id": report["data"]["report_id"],
         "report_html": report["html"],
+        "report_url": f"/api/report/{session_id}",
         "duration_ms": trace.total_duration_ms()
     }
